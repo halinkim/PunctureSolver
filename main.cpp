@@ -63,42 +63,6 @@ void del_grid(SingleGrid *grid) {
     delete[] grid -> res;
 }
 
-//SingleGrid* new_grid(int N, double x0, double x1, double y0, double y1, double z0, double z1) {
-//    SingleGrid *grid = new SingleGrid;
-//    grid -> N = N;
-//    grid -> x0 = x0;
-//    grid -> x1 = x1;
-//    grid -> y0 = y0;
-//    grid -> y1 = y1;
-//    grid -> z0 = z0;
-//    grid -> z1 = z1;
-//    grid -> dx = (x1 - x0) / N;
-//    grid -> dy = (y1 - y0) / N;
-//    grid -> dz = (z1 - z0) / N;
-//    grid -> u = new double **[N + 1];
-//    grid -> s = new double **[N + 1];
-//    grid -> res = new double **[N + 1];
-//    for (int x = 0; x <= N; ++x) {
-//        grid -> u[x] = new double *[N + 1];
-//        grid -> s[x] = new double *[N + 1];
-//        grid -> res[x] = new double *[N + 1];
-//        for (int y = 0; y <= N; ++y) {
-//            grid -> u[x][y] = new double[N + 1];
-//            grid -> s[x][y] = new double[N + 1];
-//            grid -> res[x][y] = new double[N + 1];
-//        }
-//    }
-//    for (int x = 0; x <= N; ++x) {
-//        for (int y = 0; y <= N; ++y) {
-//            for (int z = 0; z <= N; ++z) {
-//                grid -> u[x][y][z] = 0;
-//                grid -> s[x][y][z] = 0;
-//                grid -> res[x][y][z] = 0;
-//            }
-//        }
-//    }
-//    return grid;
-//}
 
 class Multigrid {
 private:
@@ -293,24 +257,58 @@ void Multigrid::relax_rb(int depth) {
 
 void Multigrid::prolongation(int depth) {
     int N0 = this -> Grids[depth - 1].N;
-    int dx4[8] = {1, 1, 1, 1, -1, -1, -1, -1};
-    int dy4[8] = {1, -1, 1, -1, 1, -1, 1, -1};
-    int dz4[8] = {1, 1, -1, -1, 1, 1, -1, -1};
+    int dx8[8] = {1, 1, 1, 1, -1, -1, -1, -1};
+    int dy8[8] = {1, -1, 1, -1, 1, -1, 1, -1};
+    int dz8[8] = {1, 1, -1, -1, 1, 1, -1, -1};
+    int dx4[4] = {1, 1, -1, -1};
+    int dy4[4] = {1, -1, 1, -1};
+    int dx2[2] = {1, -1};
     for (int x = 0; x <= N0; ++x) {
         for (int y = 0; y <= N0; ++y) {
             for (int z = 0; z <= N0; ++z) {
                 double u0 = Grids[depth - 1].u[x][y][z];
-                // Corner
-                // Edge
-                // Surface
-
                 // Inner
                 if (0 < x && x < N0 && 0 < y && y < N0 && 0 < z && z < N0) {
                     for (int ind = 0; ind < 8; ++ind) {
-                        this -> Grids[depth].u[(x << 1) + dx4[ind]][(y << 1) + dy4[ind]][(z << 1) + dz4[ind]] += u0 / 8;
+                        this -> Grids[depth].u[(x << 1) + dx8[ind]][(y << 1) + dy8[ind]][(z << 1) + dz8[ind]] += u0 / 8;
                     }
                 }
-                else if ()
+                // Surface
+                else if (0 < x && x < N0 && 0 < y && y < N0) {
+                    for (int ind = 0; ind < 4; ++ind) {
+                        this -> Grids[depth].u[(x << 1) + dx4[ind]][(y << 1) + dy4[ind]][(z << 1)] += u0 / 4;
+                    }
+                }
+                else if (0 < x && x < N0 && 0 < z && z < N0) {
+                    for (int ind = 0; ind < 4; ++ind) {
+                        this -> Grids[depth].u[(x << 1) + dx4[ind]][(y << 1)][(z << 1) + dy4[ind]] += u0 / 4;
+                    }
+                }
+                else if (0 < z && z < N0 && 0 < y && y < N0) {
+                    for (int ind = 0; ind < 4; ++ind) {
+                        this -> Grids[depth].u[(x << 1)][(y << 1) + dy4[ind]][(z << 1)  + dx4[ind]] += u0 / 4;
+                    }
+                }
+                // Edge
+                else if (0 < x && x < N0) {
+                    for (int ind = 0; ind < 2; ++ind) {
+                        this -> Grids[depth].u[(x << 1) + dx2[ind]][(y << 1)][(z << 1)] += u0 / 2;
+                    }
+                }
+                else if (0 < y && y < N0) {
+                    for (int ind = 0; ind < 2; ++ind) {
+                        this -> Grids[depth].u[(x << 1)][(y << 1) + dx2[ind]][(z << 1)] += u0 / 2;
+                    }
+                }
+                else if (0 < z && z < N0) {
+                    for (int ind = 0; ind < 2; ++ind) {
+                        this -> Grids[depth].u[(x << 1)][(y << 1)][(z << 1) + dx2[ind]] += u0 / 2;
+                    }
+                }
+                //Corner
+                else {
+                    this -> Grids[depth].u[x << 1][y << 1][z << 1] = u0;
+                }
             }
         }
     }
@@ -330,7 +328,20 @@ void Multigrid::prolongation(int depth) {
 }
 
 void Multigrid::restriction(int depth) {
-
+    int N0 = this -> Grids[depth - 1].N;
+    int dx8[8] = {1, 1, 1, 1, -1, -1, -1, -1};
+    int dy8[8] = {1, -1, 1, -1, 1, -1, 1, -1};
+    int dz8[8] = {1, 1, -1, -1, 1, 1, -1, -1};
+    int dx4[4] = {1, 1, -1, -1};
+    int dy4[4] = {1, -1, 1, -1};
+    int dx2[2] = {1, -1};
+    for (int x = 0; x <= N0; ++x) {
+        for (int y = 0; y <= N0; ++y) {
+            for (int z = 0; z <= N0; ++z) {
+                
+            }
+        }
+    }
 }
 
 void Multigrid::residual(int depth) {
@@ -338,7 +349,16 @@ void Multigrid::residual(int depth) {
 }
 
 void Multigrid::multigrid(int lvs) {
-
+    if (lvs == 1) {
+        this ->relax(lvs);
+        return;
+    }
+    this -> relax(lvs);
+    this -> residual(lvs);
+    this -> restriction(lvs - 1);
+    this -> multigrid(lvs - 1);
+    this -> prolongation(lvs);
+    this -> relax(lvs);
 }
 
 int main() {
