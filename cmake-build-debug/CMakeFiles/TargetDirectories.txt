@@ -1,0 +1,3 @@
+/home/axis/CLionProjects/PunctureSolver/cmake-build-debug/CMakeFiles/PunctureSolver.dir
+/home/axis/CLionProjects/PunctureSolver/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/axis/CLionProjects/PunctureSolver/cmake-build-debug/CMakeFiles/rebuild_cache.dir
