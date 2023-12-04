@@ -338,7 +338,13 @@ void Multigrid::restriction(int depth) {
     for (int x = 0; x <= N0; ++x) {
         for (int y = 0; y <= N0; ++y) {
             for (int z = 0; z <= N0; ++z) {
-                
+                // Inner
+                if (0 < x && x < N0 && 0 < y && y < N0 && 0 < z && z < N0) {
+                    this -> Grids[depth].s[x][y][z] = (this -> Grids[depth + 1].res[2 * x][2 * y][2 * z] / 8 + )
+                    for (int ind = 0; ind < 8; ++ind) {
+                        this -> Grids[depth].u[(x << 1) + dx8[ind]][(y << 1) + dy8[ind]][(z << 1) + dz8[ind]] += u0 / 8;
+                    }
+                }
             }
         }
     }
