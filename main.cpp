@@ -117,7 +117,7 @@ void Multigrid::relax_rb(int depth) {
                 (this -> Grids[depth].u[x + 1][y][z] + this -> Grids[depth].u[x - 1][y][z] +\
                 this -> Grids[depth].u[x][y + 1][z] + this -> Grids[depth].u[x][y - 1][z] +\
                 this -> Grids[depth].u[x][y][z + 1] + this -> Grids[depth].u[x][y][z - 1] \
-                - Grids[depth].dx * Grids[depth].dx * Grids[depth].s[x][y][z]) / 6;
+                - this -> Grids[depth].dx * this -> Grids[depth].dx * this -> Grids[depth].s[x][y][z]) / 6;
             }
         }
     }
@@ -128,7 +128,7 @@ void Multigrid::relax_rb(int depth) {
                 (this -> Grids[depth].u[x + 1][y][z] + this -> Grids[depth].u[x - 1][y][z] +\
                 this -> Grids[depth].u[x][y + 1][z] + this -> Grids[depth].u[x][y - 1][z] +\
                 this -> Grids[depth].u[x][y][z + 1] + this -> Grids[depth].u[x][y][z - 1] \
-                - Grids[depth].dx * Grids[depth].dx * Grids[depth].s[x][y][z]) / 6;
+                - this -> Grids[depth].dx * this -> Grids[depth].dx * this -> Grids[depth].s[x][y][z]) / 6;
             }
         }
     }
@@ -329,21 +329,73 @@ void Multigrid::prolongation(int depth) {
 
 void Multigrid::restriction(int depth) {
     int N0 = this -> Grids[depth - 1].N;
-    int dx8[8] = {1, 1, 1, 1, -1, -1, -1, -1};
-    int dy8[8] = {1, -1, 1, -1, 1, -1, 1, -1};
-    int dz8[8] = {1, 1, -1, -1, 1, 1, -1, -1};
-    int dx4[4] = {1, 1, -1, -1};
-    int dy4[4] = {1, -1, 1, -1};
-    int dx2[2] = {1, -1};
+    int dx16[6] = {0, 0, 0, 0, -1, 1};
+    int dy16[6] = {0, 1, 0, -1, 0, 0};
+    int dz16[6] = {1, 0, -1, 0, 0, 0};
+    int dx64[8] = {1, 1, 1, 1, -1, -1, -1, -1};
+    int dy64[8] = {1, -1, 1, -1, 1, -1, 1, -1};
+    int dz64[8] = {1, 1, -1, -1, 1, 1, -1, -1};
+    int dx32[12] = {0, 1, 0, -1, 1, 1, -1, -1, 0, 1, 0, -1};
+    int dy32[12] = {1, 0, -1, 0, 1, -1, -1, 1, 1, 0, -1, 0};
+    int dz32[12] = {1, 1, 1, 1, 0, 0, 0, 0, -1, -1, -1, -1};
+
+    int dx2_16[4] = {1, 1, -1, -1};
+    int dy2_16[4] = {1, -1, 1, -1};
+    int dx2_8[4] = {1, 0, -1, 0};
+    int dy2_8[4] = {0, -1, 0, 1};
     for (int x = 0; x <= N0; ++x) {
         for (int y = 0; y <= N0; ++y) {
             for (int z = 0; z <= N0; ++z) {
                 // Inner
                 if (0 < x && x < N0 && 0 < y && y < N0 && 0 < z && z < N0) {
-                    this -> Grids[depth].s[x][y][z] = (this -> Grids[depth + 1].res[2 * x][2 * y][2 * z] / 8 + )
-                    for (int ind = 0; ind < 8; ++ind) {
-                        this -> Grids[depth].u[(x << 1) + dx8[ind]][(y << 1) + dy8[ind]][(z << 1) + dz8[ind]] += u0 / 8;
+                    this -> Grids[depth].s[x][y][z] = this -> Grids[depth + 1].res[x << 1][y << 1][z << 1] / 8;
+                    for (int ind = 0; ind < 6; ++ind) {
+                        this -> Grids[depth].s[x][y][z] += this -> Grids[depth + 1].res[(x << 1) + dx16[ind]][(y << 1) + dy16[ind]][(z << 1) + dz16[ind]] / 16;
                     }
+                    for (int ind = 0; ind < 12; ++ind) {
+                        this -> Grids[depth].s[x][y][z] += this -> Grids[depth + 1].res[(x << 1) + dx32[ind]][(y << 1) + dy32[ind]][(z << 1) + dz32[ind]] / 32;
+                    }
+                    for (int ind = 0; ind < 8; ++ind) {
+                        this -> Grids[depth].s[x][y][z] += this -> Grids[depth + 1].res[(x << 1) + dx64[ind]][(y << 1) + dy64[ind]][(z << 1) + dz64[ind]] / 64;
+                    }
+                }
+
+                // Surface
+                else if (0 < x && x < N0 && 0 < y && y < N0) {
+                    this -> Grids[depth].s[x][y][z] = this -> Grids[depth + 1].res[x << 1][y << 1][z << 1] / 4;
+                    for (int ind = 0; ind < 4; ++ind) {
+                        this -> Grids[depth].s[x][y][z] += this -> Grids[depth + 1].res[(x << 1) + dx2_16[ind]][(y << 1) + dy2_16[ind]][(z << 1)] / 16;
+                        this -> Grids[depth].s[x][y][z] += this -> Grids[depth + 1].res[(x << 1) + dx2_8[ind]][(y << 1) + dy2_8[ind]][(z << 1)] / 8;
+                    }
+                }
+                else if (0 < x && x < N0 && 0 < z && z < N0) {
+                    this -> Grids[depth].s[x][y][z] = this -> Grids[depth + 1].res[x << 1][y << 1][z << 1] / 4;
+                    for (int ind = 0; ind < 4; ++ind) {
+                        this -> Grids[depth].s[x][y][z] += this -> Grids[depth + 1].res[(x << 1) + dx2_16[ind]][(y << 1)][(z << 1) + dy2_16[ind]] / 16;
+                        this -> Grids[depth].s[x][y][z] += this -> Grids[depth + 1].res[(x << 1) + dx2_8[ind]][(y << 1)][(z << 1) + dy2_8[ind]] / 8;
+                    }
+                }
+                else if (0 < z && z < N0 && 0 < y && y < N0) {
+                    this -> Grids[depth].s[x][y][z] = this -> Grids[depth + 1].res[x << 1][y << 1][z << 1] / 4;
+                    for (int ind = 0; ind < 4; ++ind) {
+                        this -> Grids[depth].s[x][y][z] += this -> Grids[depth + 1].res[(x << 1)][(y << 1) + dx2_16[ind]][(z << 1) + dy2_16[ind]] / 16;
+                        this -> Grids[depth].s[x][y][z] += this -> Grids[depth + 1].res[(x << 1)][(y << 1) + dx2_8[ind]][(z << 1) + dy2_8[ind]] / 8;
+                    }
+                }
+
+                // Edge
+                else if (0 < x && x < N0) {
+                    this -> Grids[depth].s[x][y][z] = this -> Grids[depth + 1].res[x << 1][y << 1][z << 1] / 2 + this -> Grids[depth + 1].res[(x << 1) - 1][y << 1][z << 1] / 4 + this -> Grids[depth + 1].res[(x << 1) + 1][y << 1][z << 1] / 4;
+                }
+                else if (0 < y && y < N0) {
+                    this -> Grids[depth].s[x][y][z] = this -> Grids[depth + 1].res[x << 1][y << 1][z << 1] / 2 + this -> Grids[depth + 1].res[(x << 1)][(y << 1) - 1][z << 1] / 4 + this -> Grids[depth + 1].res[(x << 1)][(y << 1) + 1][z << 1] / 4;
+                }
+                else if (0 < z && z < N0) {
+                    this -> Grids[depth].s[x][y][z] = this -> Grids[depth + 1].res[x << 1][y << 1][z << 1] / 2 + this -> Grids[depth + 1].res[(x << 1)][y << 1][(z << 1) - 1] / 4 + this -> Grids[depth + 1].res[(x << 1)][y << 1][(z << 1) + 1] / 4;
+                }
+                //Corner
+                else {
+                    this -> Grids[depth].s[x][y][z] = this -> Grids[depth + 1].res[x << 1][y << 1][z << 1];
                 }
             }
         }
@@ -351,7 +403,16 @@ void Multigrid::restriction(int depth) {
 }
 
 void Multigrid::residual(int depth) {
-
+    for (int x = 1; x < N0; ++x) {
+        for (int y = 1; y < N0; ++y) {
+            for (int z = 1; z < N0; ++z) {
+                this -> Grids[depth].res[x][y][z] = this -> Grids[depth].s[x][y][z] - (this -> Grids[depth].u[x + 1][y][z] + this -> Grids[depth].u[x - 1][y][z] +\
+                this -> Grids[depth].u[x][y + 1][z] + this -> Grids[depth].u[x][y - 1][z] +\
+                this -> Grids[depth].u[x][y][z + 1] + this -> Grids[depth].u[x][y][z - 1] \
+                - 6 * this -> Grids[depth].u[x][y][z]) / this -> Grids[depth].dx / this -> Grids[depth].dx;
+            }
+        }
+    }
 }
 
 void Multigrid::multigrid(int lvs) {
@@ -369,6 +430,6 @@ void Multigrid::multigrid(int lvs) {
 
 int main() {
     Multigrid mgs = Multigrid(5, 1, 10, false);
-
+    
     return 0;
 }
