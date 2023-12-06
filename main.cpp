@@ -1,6 +1,9 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <string>
+#include <fstream>
+#include <tuple>
 
 struct SingleGrid {
     int N;
@@ -69,7 +72,13 @@ private:
     int depth, iter;
     bool verbose;
     SingleGrid *Grids;
-
+    double ***invalpha;
+    double ***alpha;
+    double ***beta;
+    double ***init_u;
+    double TP_epsilon = 1E-6;
+    double TP_tiny = 0;
+//    double ***res;
 //    std::vector<SingleGrid> Grids;
 
 public:
@@ -81,6 +90,12 @@ public:
     void restriction(int depth);
     void residual(int depth);
     void multigrid(int lvs);
+    double norm_residual();
+    void solve_lin();
+    void solve();
+    void init(const std::string& path_name);
+    void write_u(const std::string& path_name);
+    void write_psi(const std::string& path_name);
 };
 
 Multigrid::Multigrid(int depth, int iter, double r, bool verbose) {
@@ -93,6 +108,30 @@ Multigrid::Multigrid(int depth, int iter, double r, bool verbose) {
         init_grid(&Grids[i], N, -r, r, -r, r, -r, r);
 //        this -> Grids[i] = new_grid(N, -r, r, -r, r, -r, r);
     }
+    int N = 1 << depth;
+    this -> invalpha = new double **[N + 1];
+    this -> alpha = new double **[N + 1];
+    this -> beta = new double **[N + 1];
+    this -> init_u = new double **[N + 1];
+//    this -> res = new double **[N + 1];
+    for (int x = 0; x <= N; ++x) {
+        this -> invalpha[x] = new double *[N + 1];
+        this -> alpha[x] = new double *[N + 1];
+        this -> beta[x] = new double *[N + 1];
+        this -> init_u[x] = new double *[N + 1];
+//        this -> res[x] = new double *[N + 1];
+        for (int y = 0; y <= N; ++y) {
+            this -> invalpha[x][y] = new double [N + 1];
+            this -> alpha[x][y] = new double [N + 1];
+            this -> beta[x][y] = new double [N + 1];
+            this -> init_u[x][y] = new double [N + 1];
+//            this -> res[x][y] = new double [N + 1];
+            for (int z = 0; z <= N; ++z) {
+                this -> init_u[x][y][z] = 0;
+            }
+        }
+    }
+
 }
 
 Multigrid::~Multigrid() {
@@ -100,6 +139,7 @@ Multigrid::~Multigrid() {
         del_grid(&Grids[i]);
     }
     delete[] Grids;
+
 }
 
 void Multigrid::relax(int depth) {
@@ -400,9 +440,18 @@ void Multigrid::restriction(int depth) {
             }
         }
     }
+
+//    for (int x = 0; x <= N0; ++x) {
+//        for (int y = 0; y <= N0; ++y) {
+//            for (int z = 0; z <= N0; ++z) {
+//                this -> Grids[depth].u[x][y][z] = 0;
+//            }
+//        }
+//    }
 }
 
 void Multigrid::residual(int depth) {
+    int N0 = this -> Grids[depth - 1].N;
     for (int x = 1; x < N0; ++x) {
         for (int y = 1; y < N0; ++y) {
             for (int z = 1; z < N0; ++z) {
@@ -417,7 +466,7 @@ void Multigrid::residual(int depth) {
 
 void Multigrid::multigrid(int lvs) {
     if (lvs == 1) {
-        this ->relax(lvs);
+        this -> relax(lvs);
         return;
     }
     this -> relax(lvs);
@@ -428,8 +477,239 @@ void Multigrid::multigrid(int lvs) {
     this -> relax(lvs);
 }
 
+void Multigrid::solve_lin() {
+    if (this -> verbose) {
+        std::cout << "Solving Linear PDE...\n";
+    }
+    while (true) {
+        this -> multigrid(this -> depth - 1);
+        double x = this -> norm_residual();
+        if (this -> verbose) {
+//            std::cout << "  local norm residual: " << x << "\n";
+        }
+        if (x < 1E-12) {
+            break;
+        }
+    }
+    if (this -> verbose) {
+        std::cout << "Done!\n";
+    }
+}
+
+double Multigrid::norm_residual() {
+    double cnt = 0;
+    int N0 = this -> Grids[this -> depth - 1].N;
+    double dx = this -> Grids[this -> depth - 1].dx;
+    for (int x = 1; x < N0; ++x) {
+        for (int y = 1; y < N0; ++y) {
+            for (int z = 1; z < N0; ++z) {
+                cnt += this -> Grids[this -> depth - 1].res[x][y][z] * this -> Grids[this -> depth - 1].res[x][y][z] / (N0 - 1);
+            }
+        }
+    }
+
+    return sqrt(cnt) * dx * dx;
+}
+
+void Multigrid::solve() {
+    int N0 = this -> Grids[depth - 1].N;
+    int depth = this -> depth - 1;
+    for (int iter = 0; iter < 10; ++iter) {
+        double mean_s = 0;
+
+        for (int x = 0; x <= N0; ++x) {
+            for (int y = 0; y <= N0; ++y) {
+                for (int z = 0; z <= N0; ++z) {
+                    this -> Grids[depth].u[x][y][z] = 0;
+                }
+            }
+        }
+
+
+        for (int x = 1; x < N0; ++x) {
+            for (int y = 1; y < N0; ++y) {
+                for (int z = 1; z < N0; ++z) {
+                    this -> Grids[depth].s[x][y][z] = - this-> beta[x][y][z] * std::pow(this -> alpha[x][y][z] * (1 + this -> init_u[x][y][z]) + 1, -7) - (this -> init_u[x + 1][y][z] + this -> init_u[x - 1][y][z] +\
+                                                        this -> init_u[x][y + 1][z] + this -> init_u[x][y - 1][z] +\
+                                                        this -> init_u[x][y][z + 1] + this -> init_u[x][y][z - 1] \
+                                                        - 6 * this -> init_u[x][y][z]) / this -> Grids[depth].dx / this -> Grids[depth].dx;
+                    mean_s += this -> Grids[depth].s[x][y][z] * this -> Grids[depth].s[x][y][z];
+                }
+            }
+        }
+        std::cout << "Mean source: " << std::sqrt(mean_s / (N0 - 1) / (N0 - 1) / (N0 - 1)) << "\n";
+        double nres = 0;
+        this -> solve_lin();
+        for (int x = 0; x <= N0; ++x) {
+            for (int y = 0; y <= N0; ++y) {
+                for (int z = 0; z <= N0; ++z) {
+                    this -> init_u[x][y][z] += this -> Grids[depth].u[x][y][z];
+                    nres += this -> Grids[depth].u[x][y][z] * this -> Grids[depth].u[x][y][z];
+                }
+            }
+        }
+        nres = std::sqrt(nres / (N0 + 1) / (N0 + 1) / (N0 + 1));
+        if (this -> verbose) {
+            std::cout << "Iterating.. " << nres << "\n";
+        }
+    }
+}
+
+void Multigrid::init(const std::string& path_name) {
+    std::ifstream fin;
+    fin.open(path_name);
+    if (!fin) {
+        std::cout << "Fail to open file.\n";
+        return;
+    }
+    std::cout << "Setting Initial alpha, beta...\n";
+    int NofP;
+    fin >> NofP;
+    std::vector<std::tuple<double, double, double, double, double, double, double, double, double, double>> punctures;
+
+    for (int i = 0; i < NofP; ++i) {
+        double Mi, xi, yi, zi, Pix, Piy, Piz, Six, Siy, Siz;
+        fin >> Mi >> xi >> yi >> zi >> Pix >> Piy >> Piz >> Six >> Siy >> Siz;
+        punctures.emplace_back(Mi, xi, yi, zi, Pix, Piy, Piz, Six, Siy, Siz);
+//        std::cout << "xyz: " << xi << " " << yi << " " << zi << "\n";
+    }
+    int depth = this -> depth - 1;
+    int N0 = this -> Grids[depth].N;
+    double alpha_inv, si, si2, si3, alpha_p, beta_p, Aij;
+    double nx, ny, nz;
+    double ix, iy, iz;
+    double P[3];
+    double S[3];
+    double n[3];
+    double n_P, n_S[3];
+    for (int x = 0; x <= N0; ++x) {
+        for (int y = 0; y <= N0; ++y) {
+            for (int z = 0; z <= N0; ++z) {
+                alpha_inv = 0;
+                nx = this -> Grids[depth].x0 + this -> Grids[depth].dx * x;
+                ny = this -> Grids[depth].y0 + this -> Grids[depth].dx * y;
+                nz = this -> Grids[depth].z0 + this -> Grids[depth].dx * z;
+//                std::cout << "nxyz: " << nx << " " << ny << " " << nz << "\n";
+//                si = sqrt((this -> Grids[depth].x0 + this -> Grids[depth].dx * x) *\
+//                             (this -> Grids[depth].x0 + this -> Grids[depth].dx * x) +\
+//                             (this -> Grids[depth].y0 + this -> Grids[depth].dy * y) *\
+//                                     (this -> Grids[depth].y0 + this -> Grids[depth].dy * y) +\
+//                             (this -> Grids[depth].z0 + this -> Grids[depth].dz * z) *\
+//                                     (this -> Grids[depth].z0 + this -> Grids[depth].dz * z));
+//                si2 = si * si;
+//                si4 = si2 * si2;
+//                si = std::max(this -> TP_tiny, std::pow(si4 + std::pow(this -> TP_epsilon, 4), 1/4));
+//                si2 = si * si;
+//                si4 = si2 * si2;
+                beta_p = 0;
+                for (int ind = 0; ind < NofP; ++ind) {
+                    ix = std::get<1>(punctures[ind]);
+                    iy = std::get<2>(punctures[ind]);
+                    iz = std::get<3>(punctures[ind]);
+                    si2 = (nx - ix) * (nx - ix) + (ny - iy) * (ny - iy) + (nz - iz) * (nz - iz);
+                    si2 = std::sqrt(std::pow(si2, 2) + std::pow(TP_epsilon, 4));
+                    if (si2 < pow(TP_tiny, 2)) si2 = pow(TP_tiny, 2);
+                    si = std::sqrt(si2);
+//                    std::cout << "si: " << si << "\n";
+                    alpha_inv += std::get<0>(punctures[ind]) / 2 / si;
+//                    if (x == 19 && y == 16 && z == 16) {
+//                        std::cout << "xyzs: " << alpha_inv << " " << si << " " << ix << ", " << iy << ", " << iz << ", " << nx << ", " << ny << ", " << nz << "\n";
+//                    }
+                }
+
+                for (int i = 0; i < 3; ++i) {
+                    for (int j = 0; j < 3; ++j) {
+                        Aij = 0;
+                        for (int ind = 0; ind < NofP; ++ind) {
+                            ix = std::get<1>(punctures[ind]);
+                            iy = std::get<2>(punctures[ind]);
+                            iz = std::get<3>(punctures[ind]);
+                            si2 = (nx - ix) * (nx - ix) + (ny - iy) * (ny - iy) + (nz - iz) * (nz - iz);
+                            si2 = std::sqrt(std::pow(si2, 2) + std::pow(TP_epsilon, 4));
+                            if (si2 < pow(TP_tiny, 2)) si2 = pow(TP_tiny, 2);
+                            si = std::sqrt(si2);
+                            si3 = si * si2;
+
+                            P[0] = std::get<4>(punctures[ind]);
+                            P[1] = std::get<5>(punctures[ind]);
+                            P[2] = std::get<6>(punctures[ind]);
+                            S[0] = std::get<7>(punctures[ind]);
+                            S[1] = std::get<8>(punctures[ind]);
+                            S[2] = std::get<9>(punctures[ind]);
+                            n[0] = (nx - ix) / si;
+                            n[1] = (ny - iy) / si;
+                            n[2] = (nz - iz) / si;
+                            n_P = 0;
+                            n_S[0] = n[1] * S[2] - n[2] * S[1];
+                            n_S[1] = n[2] * S[0] - n[0] * S[2];
+                            n_S[2] = n[0] * S[1] - n[1] * S[0];
+                            for (int k = 0; k < 3; ++k) {
+                                n_P += n[k] * P[k];
+                            }
+                            Aij += 1.5 * (P[i] * n[j] + P[j] * n[i] + n_P * n[i] * n[j]) / si2 - 3.0 * (n_S[i] * n[j] + n_S[j] * n[i]) / si3;
+                            if (i == j) {
+                                Aij -= 1.5 * (n_P / si2);
+                            }
+                        }
+                        beta_p += Aij * Aij;
+                    }
+                }
+                alpha_p = 1 / alpha_inv;
+                beta_p = beta_p * std::pow(alpha_p, 7) / 8;
+                this -> invalpha[x][y][z] = alpha_inv;
+                this -> alpha[x][y][z] = alpha_p;
+                this -> beta[x][y][z] = beta_p;
+//                std::cout << alpha_p << " " << beta_p << "\n";
+            }
+        }
+    }
+    fin.close();
+    std::cout << "  Done!\n";
+}
+
+void Multigrid::write_u(const std::string& path_name) {
+    std::ofstream fout;
+    fout.open(path_name);
+    fout.precision(20);
+    int depth = this -> depth - 1;
+    int N0 = this -> Grids[depth].N;
+    fout << N0 << "\n";
+    for (int x = 0; x <= N0; ++x) {
+        for (int y = 0; y <= N0; ++y) {
+            for (int z = 0; z <= N0; ++z) {
+                fout << this -> init_u[x][y][z] << " ";
+            }
+            fout << "\n";
+        }
+        fout << "\n";
+    }
+    fout.close();
+}
+
+void Multigrid::write_psi(const std::string &path_name) {
+    std::ofstream fout;
+    fout.open(path_name);
+    fout.precision(20);
+    int depth = this -> depth - 1;
+    int N0 = this -> Grids[depth].N;
+    fout << N0 << "\n";
+    for (int x = 0; x <= N0; ++x) {
+        for (int y = 0; y <= N0; ++y) {
+            for (int z = 0; z <= N0; ++z) {
+                fout << 1 + this -> invalpha[x][y][z] + this -> init_u[x][y][z] << " ";
+            }
+            fout << "\n";
+        }
+        fout << "\n";
+    }
+    fout.close();
+}
+
 int main() {
-    Multigrid mgs = Multigrid(5, 1, 10, false);
-    
+    Multigrid mgs = Multigrid(5, 1, 6, true);
+    mgs.init("data-init-0.txt");
+    mgs.solve();
+//    mgs.write_u("out.txt");
+    mgs.write_psi("out-init-0.txt");
     return 0;
 }

@@ -1,0 +1,5 @@
+N // Number of punctures
+M1 x1 y1 z1 P1x P1y P1z S1x S1y S1z
+M2 x2 y2 z2 P2x P2y P2z S2x S2y S2z
+...
+
