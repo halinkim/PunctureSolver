@@ -707,9 +707,9 @@ void Multigrid::write_psi(const std::string &path_name) {
 
 int main() {
     Multigrid mgs = Multigrid(5, 1, 6, true);
-    mgs.init("data-init-0.txt");
+    mgs.init("data-init-2.txt");
     mgs.solve();
 //    mgs.write_u("out.txt");
-    mgs.write_psi("out-init-0.txt");
+    mgs.write_psi("out-init-2.txt");
     return 0;
 }
