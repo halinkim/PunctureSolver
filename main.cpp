@@ -514,7 +514,7 @@ double Multigrid::norm_residual() {
 void Multigrid::solve() {
     int N0 = this -> Grids[depth - 1].N;
     int depth = this -> depth - 1;
-    for (int iter = 0; iter < 10; ++iter) {
+    for (int iter = 0; iter < 5; ++iter) {
         double mean_s = 0;
 
         for (int x = 0; x <= N0; ++x) {
@@ -707,9 +707,9 @@ void Multigrid::write_psi(const std::string &path_name) {
 
 int main() {
     Multigrid mgs = Multigrid(5, 1, 6, true);
-    mgs.init("data-init-2.txt");
+    mgs.init("data.txt");
     mgs.solve();
 //    mgs.write_u("out.txt");
-    mgs.write_psi("out-init-2.txt");
+    mgs.write_u("with_spin_iter_5.out");
     return 0;
 }
