@@ -69,7 +69,7 @@ void del_grid(SingleGrid *grid) {
 
 class Multigrid {
 private:
-    int depth, iter;
+    int depth, iter, maxIter;
     bool verbose;
     SingleGrid *Grids;
     double ***invalpha;
@@ -82,7 +82,7 @@ private:
 //    std::vector<SingleGrid> Grids;
 
 public:
-    Multigrid(int depth, int iter, double r, bool verbose);
+    Multigrid(int depth, int iter, double r, bool verbose, int maxIter);
     ~Multigrid();
     void relax(int depth);
     void relax_rb(int depth);
@@ -98,11 +98,12 @@ public:
     void write_psi(const std::string& path_name);
 };
 
-Multigrid::Multigrid(int depth, int iter, double r, bool verbose) {
+Multigrid::Multigrid(int depth, int iter, double r, bool verbose, int maxIter) {
     this -> depth = depth;
     this -> iter = iter;
     this -> verbose = verbose;
     this -> Grids = new SingleGrid[depth];
+    this -> maxIter = maxIter;
     for (int i = 0; i < depth; ++i) {
         int N = 2 << i;
         init_grid(&Grids[i], N, -r, r, -r, r, -r, r);
@@ -485,9 +486,11 @@ void Multigrid::solve_lin() {
         this -> multigrid(this -> depth - 1);
         double x = this -> norm_residual();
         if (this -> verbose) {
-//            std::cout << "  local norm residual: " << x << "\n";
+//            std::cout << "  local norm residual: " << x << '\r';
+//            printf("  local norm residual: %f\r", x);
         }
         if (x < 1E-12) {
+            std::cout << "\n";
             break;
         }
     }
@@ -514,16 +517,20 @@ double Multigrid::norm_residual() {
 void Multigrid::solve() {
     int N0 = this -> Grids[depth - 1].N;
     int depth = this -> depth - 1;
-    for (int iter = 0; iter < 5; ++iter) {
+    for (int iter = 0; iter < this -> maxIter; ++iter) {
         double mean_s = 0;
 
-        for (int x = 0; x <= N0; ++x) {
-            for (int y = 0; y <= N0; ++y) {
-                for (int z = 0; z <= N0; ++z) {
-                    this -> Grids[depth].u[x][y][z] = 0;
-                }
-            }
-        }
+//        for (int d = 0; d <= depth; ++d) {
+//            int n = this -> Grids[d].N;
+//            for (int x = 0; x <= n; ++x) {
+//                for (int y = 0; y <= n; ++y) {
+//                    for (int z = 0; z <= n; ++z) {
+//                        this -> Grids[d].u[x][y][z] = 0;
+//                    }
+//                }
+//            }
+//        }
+
 
 
         for (int x = 1; x < N0; ++x) {
@@ -550,7 +557,7 @@ void Multigrid::solve() {
         }
         nres = std::sqrt(nres / (N0 + 1) / (N0 + 1) / (N0 + 1));
         if (this -> verbose) {
-            std::cout << "Iterating.. " << nres << "\n";
+            std::cout << "Iterating.. residual: " << nres << "\n";
         }
     }
 }
@@ -571,7 +578,7 @@ void Multigrid::init(const std::string& path_name) {
         double Mi, xi, yi, zi, Pix, Piy, Piz, Six, Siy, Siz;
         fin >> Mi >> xi >> yi >> zi >> Pix >> Piy >> Piz >> Six >> Siy >> Siz;
         punctures.emplace_back(Mi, xi, yi, zi, Pix, Piy, Piz, Six, Siy, Siz);
-//        std::cout << "xyz: " << xi << " " << yi << " " << zi << "\n";
+        std::cout << "xyz: " << xi << " " << yi << " " << zi << "\n";
     }
     int depth = this -> depth - 1;
     int N0 = this -> Grids[depth].N;
@@ -659,7 +666,7 @@ void Multigrid::init(const std::string& path_name) {
                 this -> invalpha[x][y][z] = alpha_inv;
                 this -> alpha[x][y][z] = alpha_p;
                 this -> beta[x][y][z] = beta_p;
-//                std::cout << alpha_p << " " << beta_p << "\n";
+                std::cout << nx << " " << ny << " " << nz << " " << alpha_p << " " << beta_p << "\n";
             }
         }
     }
@@ -706,10 +713,10 @@ void Multigrid::write_psi(const std::string &path_name) {
 }
 
 int main() {
-    Multigrid mgs = Multigrid(5, 1, 6, true);
-    mgs.init("data.txt");
-    mgs.solve();
+    Multigrid mgs = Multigrid(5, 1, 6, true, 10);
+    mgs.init("data1.in");
+//    mgs.solve();
 //    mgs.write_u("out.txt");
-    mgs.write_u("with_spin_iter_5.out");
+//    mgs.write_psi("data-init-4-psi.out");
     return 0;
 }
