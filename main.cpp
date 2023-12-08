@@ -141,6 +141,28 @@ Multigrid::~Multigrid() {
     }
     delete[] Grids;
 
+    int N = 1 << depth;
+    this -> invalpha = new double **[N + 1];
+    this -> alpha = new double **[N + 1];
+    this -> beta = new double **[N + 1];
+    this -> init_u = new double **[N + 1];
+
+    for (int x = 0; x <= N; ++x) {
+        for (int y = 0; y <= N; ++y) {
+            delete[] invalpha[x][y];
+            delete[] alpha[x][y];
+            delete[] beta[x][y];
+            delete[] init_u[x][y];
+        }
+        delete[] invalpha[x];
+        delete[] alpha[x];
+        delete[] beta[x];
+        delete[] init_u[x];
+    }
+    delete[] invalpha;
+    delete[] alpha;
+    delete[] beta;
+    delete[] init_u;
 }
 
 void Multigrid::relax(int depth) {
