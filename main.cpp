@@ -78,6 +78,9 @@ private:
     double ***init_u;
     double TP_epsilon = 1E-6;
     double TP_tiny = 0;
+    bool use_log = false;
+    std::string logfile_path;
+    std::ofstream flog;
 //    double ***res;
 //    std::vector<SingleGrid> Grids;
 
@@ -96,6 +99,7 @@ public:
     void init(const std::string& path_name);
     void write_u(const std::string& path_name);
     void write_psi(const std::string& path_name);
+    void set_logfile(const std::string& path_name);
 };
 
 Multigrid::Multigrid(int depth, int iter, double r, bool verbose, int maxIter) {
@@ -140,6 +144,8 @@ Multigrid::~Multigrid() {
         del_grid(&Grids[i]);
     }
     delete[] Grids;
+
+    flog.close();
 
 //    int N = 1 << depth;
 //    this -> invalpha = new double **[N + 1];
@@ -501,8 +507,13 @@ void Multigrid::multigrid(int lvs) {
 }
 
 void Multigrid::solve_lin() {
+//    std::ofstream flog;
+//    if (this -> use_log) {
+//        flog.open(this -> logfile_path, std::ios::out | std::ios::app);
+//    }
     if (this -> verbose) {
         std::cout << "Solving Linear PDE...\n";
+        flog << "Solving Linear PDE...\n";
     }
 //    for (int it = 0; it < this -> iter + 100; ++it) {
     while (true) {
@@ -519,7 +530,9 @@ void Multigrid::solve_lin() {
     }
     if (this -> verbose) {
         std::cout << "Done!\n";
+        flog << "Done!\n";
     }
+//    flog.close();
 }
 
 double Multigrid::norm_residual() {
@@ -538,6 +551,11 @@ double Multigrid::norm_residual() {
 }
 
 void Multigrid::solve() {
+//    std::ofstream flog;
+//    if (this -> use_log) {
+//        flog.open(this -> logfile_path, std::ios::out | std::ios::app);
+//    }
+
     int N0 = this -> Grids[depth - 1].N;
     int depth = this -> depth - 1;
     for (int iter = 0; iter < this -> maxIter; ++iter) {
@@ -575,11 +593,17 @@ void Multigrid::solve() {
             }
         }
         std::cout << "    Mean source: " << std::sqrt(mean_s / (N0 - 1) / (N0 - 1) / (N0 - 1)) << ", Max source: " << max_s << "\n";
+        flog << "    Mean source: " << std::sqrt(mean_s / (N0 - 1) / (N0 - 1) / (N0 - 1)) << ", Max source: " << max_s << "\n";
+
         std::cout << "    Max Source xyz: " << max_s_x << " " << max_s_y << " " << max_s_z << "\n";
+        flog << "    Max Source xyz: " << max_s_x << " " << max_s_y << " " << max_s_z << "\n";
         if (iter == this -> maxIter - 1) {
             int x = 7, y = 16, z = 16;
             std::cout << "alpha, beta, init_u: " << this -> alpha[x][y][z] << " " << this -> beta[x][y][z] << " " << this -> init_u[x][y][z] << "\n";
+            flog << "alpha, beta, init_u: " << this -> alpha[x][y][z] << " " << this -> beta[x][y][z] << " " << this -> init_u[x][y][z] << "\n";
+
             std::cout << "about u: " << this -> init_u[x + 1][y][z] << " " << this -> init_u[x - 1][y][z] << " " << this -> init_u[x][y + 1][z] << " " << this -> init_u[x][y - 1][z] << " " << this -> init_u[x][y][z + 1] << " " << this -> init_u[x][y][z - 1] << "\n";
+            flog << "about u: " << this -> init_u[x + 1][y][z] << " " << this -> init_u[x - 1][y][z] << " " << this -> init_u[x][y + 1][z] << " " << this -> init_u[x][y - 1][z] << " " << this -> init_u[x][y][z + 1] << " " << this -> init_u[x][y][z - 1] << "\n";
         }
         double nres = 0;
         this -> solve_lin();
@@ -590,6 +614,7 @@ void Multigrid::solve() {
                     nres += this -> Grids[depth].u[x][y][z] * this -> Grids[depth].u[x][y][z];
                     if (iter == this -> maxIter - 1 && x == 7 && y == 16 && z == 16) {
                         std::cout << "    add new u: " << this -> Grids[depth].u[x][y][z] << "\n";
+                        flog << "    add new u: " << this -> Grids[depth].u[x][y][z] << "\n";
                     }
                 }
             }
@@ -597,6 +622,7 @@ void Multigrid::solve() {
         nres = std::sqrt(nres / (N0 + 1) / (N0 + 1) / (N0 + 1));
         if (this -> verbose) {
             std::cout << "Iterating.. residual: " << nres << "\n";
+            flog << "Iterating.. residual: " << nres << "\n";
         }
     }
 }
@@ -604,11 +630,17 @@ void Multigrid::solve() {
 void Multigrid::init(const std::string& path_name) {
     std::ifstream fin;
     fin.open(path_name);
+//    if (this -> use_log) {
+//        flog.open(this -> logfile_path, std::ios::out | std::ios::app);
+//    }
     if (!fin) {
         std::cout << "Fail to open file.\n";
+        flog << "Fail to open file.\n";
         return;
     }
     std::cout << "Setting Initial alpha, beta...\n";
+    flog << "Setting Initial alpha, beta...\n";
+
     int NofP;
     fin >> NofP;
     std::vector<std::tuple<double, double, double, double, double, double, double, double, double, double>> punctures;
@@ -712,6 +744,7 @@ void Multigrid::init(const std::string& path_name) {
 //    std::cout << "Init center: " << this -> alpha[N0 / 2][N0 / 2][N0 / 2] << " " << this -> beta[N0 / 2][N0 / 2][N0 / 2] << "\n";
     fin.close();
     std::cout << "  Done!\n";
+    flog << "  Done!\n";
 }
 
 void Multigrid::write_u(const std::string& path_name) {
@@ -752,14 +785,23 @@ void Multigrid::write_psi(const std::string &path_name) {
     fout.close();
 }
 
+void Multigrid::set_logfile(const std::string &path_name) {
+    this -> use_log = true;
+    this -> logfile_path = path_name;
+    flog.open(this -> logfile_path);
+    flog.close();
+    flog.open(this -> logfile_path, std::ios::out | std::ios::app);
+}
+
 int main() {
 //    std::ios::sync_with_stdio(false);
 //    std::cin.tie(nullptr);
     std::cout.precision(20);
-    Multigrid mgs = Multigrid(5, 1, 6, true, 10);
-    mgs.init("data-init-9.in");
+    Multigrid mgs = Multigrid(5, 1, 60, true, 10);
+    mgs.set_logfile("data-init-10.log");
+    mgs.init("data-init-10.in");
     mgs.solve();
-    mgs.write_u("data-init-9-u.out");
+//    mgs.write_u("data-init-9-u.out");
 //    mgs.write_psi("data-init-6-psi.out");
     return 0;
 }

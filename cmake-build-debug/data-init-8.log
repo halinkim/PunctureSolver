@@ -1,0 +1,30 @@
+Setting Initial alpha, beta...
+  Done!
+    Mean source: 0.0061717, Max source: 0.456141
+    Max Source xyz: 11 16 16
+Solving Linear PDE...
+Done!
+Iterating.. residual: 0.0141667
+    Mean source: 0.000694701, Max source: 0.0515514
+    Max Source xyz: 10 16 16
+Solving Linear PDE...
+Done!
+Iterating.. residual: 0.00165661
+    Mean source: 7.81195e-05, Max source: 0.00584516
+    Max Source xyz: 10 16 16
+Solving Linear PDE...
+Done!
+Iterating.. residual: 0.000186221
+    Mean source: 8.86717e-06, Max source: 0.000664484
+    Max Source xyz: 10 16 16
+Solving Linear PDE...
+Done!
+Iterating.. residual: 2.11261e-05
+    Mean source: 1.00568e-06, Max source: 7.53904e-05
+    Max Source xyz: 10 16 16
+alpha, beta, init_u: 2.18981 31.532 0.0271107
+about u: 0.0323537 0.0233819 0.0265205 0.0265205 0.0263641 0.0263641
+Solving Linear PDE...
+Done!
+    add new u: 5.41349e-06
+Iterating.. residual: 2.3943e-06

@@ -1,0 +1,55 @@
+Setting Initial alpha, beta...
+  Done!
+    Mean source: 0, Max source: 0
+    Max Source xyz: 0 0 0
+Solving Linear PDE...
+Done!
+Iterating.. residual: 0
+    Mean source: 0, Max source: 0
+    Max Source xyz: 0 0 0
+Solving Linear PDE...
+Done!
+Iterating.. residual: 0
+    Mean source: 0, Max source: 0
+    Max Source xyz: 0 0 0
+Solving Linear PDE...
+Done!
+Iterating.. residual: 0
+    Mean source: 0, Max source: 0
+    Max Source xyz: 0 0 0
+Solving Linear PDE...
+Done!
+Iterating.. residual: 0
+    Mean source: 0, Max source: 0
+    Max Source xyz: 0 0 0
+Solving Linear PDE...
+Done!
+Iterating.. residual: 0
+    Mean source: 0, Max source: 0
+    Max Source xyz: 0 0 0
+Solving Linear PDE...
+Done!
+Iterating.. residual: 0
+    Mean source: 0, Max source: 0
+    Max Source xyz: 0 0 0
+Solving Linear PDE...
+Done!
+Iterating.. residual: 0
+    Mean source: 0, Max source: 0
+    Max Source xyz: 0 0 0
+Solving Linear PDE...
+Done!
+Iterating.. residual: 0
+    Mean source: 0, Max source: 0
+    Max Source xyz: 0 0 0
+Solving Linear PDE...
+Done!
+Iterating.. residual: 0
+    Mean source: 0, Max source: 0
+    Max Source xyz: 0 0 0
+alpha, beta, init_u: 6.75 0 0
+about u: 0 0 0 0 0 0
+Solving Linear PDE...
+Done!
+    add new u: 0
+Iterating.. residual: 0

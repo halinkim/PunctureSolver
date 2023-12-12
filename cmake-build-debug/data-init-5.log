@@ -1,0 +1,55 @@
+Setting Initial alpha, beta...
+  Done!
+    Mean source: 0.829527, Max source: 101.084
+    Max Source xyz: 7 16 16
+Solving Linear PDE...
+Done!
+Iterating.. residual: 0.2008
+    Mean source: 0.827343, Max source: 100.82
+    Max Source xyz: 7 16 16
+Solving Linear PDE...
+Done!
+Iterating.. residual: 0.199252
+    Mean source: 0.801076, Max source: 97.6197
+    Max Source xyz: 7 16 16
+Solving Linear PDE...
+Done!
+Iterating.. residual: 0.192977
+    Mean source: 0.800779, Max source: 97.5837
+    Max Source xyz: 7 16 16
+Solving Linear PDE...
+Done!
+Iterating.. residual: 0.192837
+    Mean source: 0.797619, Max source: 97.1986
+    Max Source xyz: 7 16 16
+Solving Linear PDE...
+Done!
+Iterating.. residual: 0.192097
+    Mean source: 0.797581, Max source: 97.194
+    Max Source xyz: 7 16 16
+Solving Linear PDE...
+Done!
+Iterating.. residual: 0.19208
+    Mean source: 0.797175, Max source: 97.1445
+    Max Source xyz: 7 16 16
+Solving Linear PDE...
+Done!
+Iterating.. residual: 0.191985
+    Mean source: 0.79717, Max source: 97.1439
+    Max Source xyz: 7 16 16
+Solving Linear PDE...
+Done!
+Iterating.. residual: 0.191983
+    Mean source: 0.797117, Max source: 97.1375
+    Max Source xyz: 7 16 16
+Solving Linear PDE...
+Done!
+Iterating.. residual: 0.19197
+    Mean source: 0.797117, Max source: 97.1374
+    Max Source xyz: 7 16 16
+alpha, beta, init_u: 0.531287 1995.63 3.71968
+about u: 1.41956 1.5105 1.44567 1.44567 1.39687 1.39687
+Solving Linear PDE...
+Done!
+    add new u: -3.70453
+Iterating.. residual: 0.19197
