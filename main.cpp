@@ -141,28 +141,28 @@ Multigrid::~Multigrid() {
     }
     delete[] Grids;
 
-    int N = 1 << depth;
-    this -> invalpha = new double **[N + 1];
-    this -> alpha = new double **[N + 1];
-    this -> beta = new double **[N + 1];
-    this -> init_u = new double **[N + 1];
-
-    for (int x = 0; x <= N; ++x) {
-        for (int y = 0; y <= N; ++y) {
-            delete[] invalpha[x][y];
-            delete[] alpha[x][y];
-            delete[] beta[x][y];
-            delete[] init_u[x][y];
-        }
-        delete[] invalpha[x];
-        delete[] alpha[x];
-        delete[] beta[x];
-        delete[] init_u[x];
-    }
-    delete[] invalpha;
-    delete[] alpha;
-    delete[] beta;
-    delete[] init_u;
+//    int N = 1 << depth;
+//    this -> invalpha = new double **[N + 1];
+//    this -> alpha = new double **[N + 1];
+//    this -> beta = new double **[N + 1];
+//    this -> init_u = new double **[N + 1];
+//
+//    for (int x = 0; x <= N; ++x) {
+//        for (int y = 0; y <= N; ++y) {
+//            delete[] invalpha[x][y];
+//            delete[] alpha[x][y];
+//            delete[] beta[x][y];
+//            delete[] init_u[x][y];
+//        }
+//        delete[] invalpha[x];
+//        delete[] alpha[x];
+//        delete[] beta[x];
+//        delete[] init_u[x];
+//    }
+//    delete[] invalpha;
+//    delete[] alpha;
+//    delete[] beta;
+//    delete[] init_u;
 }
 
 void Multigrid::relax(int depth) {
@@ -504,6 +504,7 @@ void Multigrid::solve_lin() {
     if (this -> verbose) {
         std::cout << "Solving Linear PDE...\n";
     }
+//    for (int it = 0; it < this -> iter + 100; ++it) {
     while (true) {
         this -> multigrid(this -> depth - 1);
         double x = this -> norm_residual();
@@ -528,7 +529,7 @@ double Multigrid::norm_residual() {
     for (int x = 1; x < N0; ++x) {
         for (int y = 1; y < N0; ++y) {
             for (int z = 1; z < N0; ++z) {
-                cnt += this -> Grids[this -> depth - 1].res[x][y][z] * this -> Grids[this -> depth - 1].res[x][y][z] / (N0 - 1);
+                cnt += this -> Grids[this -> depth - 1].res[x][y][z] * this -> Grids[this -> depth - 1].res[x][y][z] / (N0 - 1) / (N0 - 1) / (N0 - 1);
             }
         }
     }
@@ -554,7 +555,8 @@ void Multigrid::solve() {
 //        }
 
 
-
+        double max_s = 0;
+        int max_s_x, max_s_y, max_s_z;
         for (int x = 1; x < N0; ++x) {
             for (int y = 1; y < N0; ++y) {
                 for (int z = 1; z < N0; ++z) {
@@ -563,10 +565,22 @@ void Multigrid::solve() {
                                                         this -> init_u[x][y][z + 1] + this -> init_u[x][y][z - 1] \
                                                         - 6 * this -> init_u[x][y][z]) / this -> Grids[depth].dx / this -> Grids[depth].dx;
                     mean_s += this -> Grids[depth].s[x][y][z] * this -> Grids[depth].s[x][y][z];
+                    if (max_s < std::abs(this -> Grids[depth].s[x][y][z])) {
+                        max_s = std::abs(this -> Grids[depth].s[x][y][z]);
+                        max_s_x = x;
+                        max_s_y = y;
+                        max_s_z = z;
+                    }
                 }
             }
         }
-        std::cout << "Mean source: " << std::sqrt(mean_s / (N0 - 1) / (N0 - 1) / (N0 - 1)) << "\n";
+        std::cout << "    Mean source: " << std::sqrt(mean_s / (N0 - 1) / (N0 - 1) / (N0 - 1)) << ", Max source: " << max_s << "\n";
+        std::cout << "    Max Source xyz: " << max_s_x << " " << max_s_y << " " << max_s_z << "\n";
+        if (iter == this -> maxIter - 1) {
+            int x = 7, y = 16, z = 16;
+            std::cout << "alpha, beta, init_u: " << this -> alpha[x][y][z] << " " << this -> beta[x][y][z] << " " << this -> init_u[x][y][z] << "\n";
+            std::cout << "about u: " << this -> init_u[x + 1][y][z] << " " << this -> init_u[x - 1][y][z] << " " << this -> init_u[x][y + 1][z] << " " << this -> init_u[x][y - 1][z] << " " << this -> init_u[x][y][z + 1] << " " << this -> init_u[x][y][z - 1] << "\n";
+        }
         double nres = 0;
         this -> solve_lin();
         for (int x = 0; x <= N0; ++x) {
@@ -574,6 +588,9 @@ void Multigrid::solve() {
                 for (int z = 0; z <= N0; ++z) {
                     this -> init_u[x][y][z] += this -> Grids[depth].u[x][y][z];
                     nres += this -> Grids[depth].u[x][y][z] * this -> Grids[depth].u[x][y][z];
+                    if (iter == this -> maxIter - 1 && x == 7 && y == 16 && z == 16) {
+                        std::cout << "    add new u: " << this -> Grids[depth].u[x][y][z] << "\n";
+                    }
                 }
             }
         }
@@ -600,7 +617,7 @@ void Multigrid::init(const std::string& path_name) {
         double Mi, xi, yi, zi, Pix, Piy, Piz, Six, Siy, Siz;
         fin >> Mi >> xi >> yi >> zi >> Pix >> Piy >> Piz >> Six >> Siy >> Siz;
         punctures.emplace_back(Mi, xi, yi, zi, Pix, Piy, Piz, Six, Siy, Siz);
-        std::cout << "xyz: " << xi << " " << yi << " " << zi << "\n";
+//        std::cout << "xyz: " << xi << " " << yi << " " << zi << "\n";
     }
     int depth = this -> depth - 1;
     int N0 = this -> Grids[depth].N;
@@ -688,10 +705,11 @@ void Multigrid::init(const std::string& path_name) {
                 this -> invalpha[x][y][z] = alpha_inv;
                 this -> alpha[x][y][z] = alpha_p;
                 this -> beta[x][y][z] = beta_p;
-                std::cout << nx << " " << ny << " " << nz << " " << alpha_p << " " << beta_p << "\n";
+//                std::cout << nx << " " << ny << " " << nz << " " << alpha_p << " " << beta_p << "\n";
             }
         }
     }
+//    std::cout << "Init center: " << this -> alpha[N0 / 2][N0 / 2][N0 / 2] << " " << this -> beta[N0 / 2][N0 / 2][N0 / 2] << "\n";
     fin.close();
     std::cout << "  Done!\n";
 }
@@ -735,10 +753,13 @@ void Multigrid::write_psi(const std::string &path_name) {
 }
 
 int main() {
+//    std::ios::sync_with_stdio(false);
+//    std::cin.tie(nullptr);
+    std::cout.precision(20);
     Multigrid mgs = Multigrid(5, 1, 6, true, 10);
-    mgs.init("data1.in");
-//    mgs.solve();
-//    mgs.write_u("out.txt");
-//    mgs.write_psi("data-init-4-psi.out");
+    mgs.init("data-init-9.in");
+    mgs.solve();
+    mgs.write_u("data-init-9-u.out");
+//    mgs.write_psi("data-init-6-psi.out");
     return 0;
 }
